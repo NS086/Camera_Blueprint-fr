@@ -104,7 +104,7 @@ blueprint:
     ntfy:
       name: |
         # ntfy Configuration
-      description: ntfy specific options. Requires a notify platform configured to use ntfy (e.g. via HACS).
+      description: ntfy specific options. Requires the ntfy integration configured in Home Assistant.
       icon: mdi:bell-circle-outline
       collapsed: true
       input:
@@ -112,22 +112,16 @@ blueprint:
           name: ntfy Base URL (Optional)
           description: |
             The internal URL for your Home Assistant instance.
-            Used for ntfy media attachments. Useful if your base URL is an external/proxy address
-            unreachable from the ntfy service. If unset, uses the top-level Base URL.
+            Used to build Frigate snapshot URLs for ntfy attachments. Useful if your external
+            base URL is unreachable from your ntfy service. If unset, uses the top-level Base URL.
             Must include the scheme, e.g. http://192.168.1.25:8123
-          default: ""
-        notify_ntfy_notifier:
-          name: ntfy Notifier Name (Optional)
-          description: |
-            The name of your ntfy notify service (e.g. 'ntfy' calls notify.ntfy).
-            If set, this will override individual devices and groups above.
-            Find your notifier name in Developer Tools → Services → filter by "notify".
           default: ""
         notify_ntfy_topic:
           name: ntfy Topic (Optional)
           description: |
-            Topic to send notifications to.
-            If omitted, uses the default topic configured in your ntfy notify platform.
+            The ntfy topic name configured in Home Assistant (e.g. 'frigate' targets notify.frigate).
+            If set, this will override individual devices and groups above.
+            Find your topics in Settings → Devices & Services → ntfy.
           default: ""
     notification_customisations:
       name: |
@@ -992,9 +986,8 @@ variables:
   telegram: "{{true if (telegram_chat_id | length > 0) else false}}"
   input_ntfy_base_url: !input ntfy_base_url
   ntfy_base_url: "{{ input_ntfy_base_url.rstrip('/') if input_ntfy_base_url else base_url }}"
-  ntfy_notifier: !input notify_ntfy_notifier
   ntfy_topic: !input notify_ntfy_topic
-  ntfy: "{{true if (ntfy_notifier | length > 0) else false}}"
+  ntfy: "{{true if (ntfy_topic | length > 0) else false}}"
   zone_only: !input zone_filter
   input_zones: !input zones
   zones: "{{ input_zones }}"
@@ -1156,13 +1149,13 @@ actions:
                           url: "{{attachment|replace( base_url, telegram_base_url )}}"
                   - conditions: "{{ ntfy }}"
                     sequence:
-                      - action: "notify.{{ ntfy_notifier }}"
+                      - action: ntfy.publish
+                        target:
+                          entity_id: "notify.{{ ntfy_topic }}"
                         data:
                           title: "{{title}}"
                           message: "{{message}}"
-                          target: "{{ ntfy_topic if ntfy_topic else omit }}"
-                          data:
-                            attach: "{{attachment|replace(base_url, ntfy_base_url)}}"
+                          attach: "{{attachment|replace(base_url, ntfy_base_url)}}"
                   - conditions: "{{ not notify_group_target }}"
                     sequence:
                       - device_id: !input notify_device
@@ -1459,7 +1452,7 @@ actions:
                             Telegram: {{telegram}},
                             Telegram_chat_id: {{telegram_chat_id}},
                             ntfy: {{ntfy}},
-                            ntfy_notifier: {{ntfy_notifier}},
+                            ntfy_topic: {{ntfy_topic}},
                           Filters: 
                             Severity:
                               Required Severity: {{input_severity}},
@@ -1527,13 +1520,13 @@ actions:
                                   url: "{{attachment|replace( base_url, telegram_base_url )}}"
                           - conditions: "{{ ntfy }}"
                             sequence:
-                              - action: "notify.{{ ntfy_notifier }}"
+                              - action: ntfy.publish
+                                target:
+                                  entity_id: "notify.{{ ntfy_topic }}"
                                 data:
                                   title: "{{title}}"
                                   message: "{{message}}"
-                                  target: "{{ ntfy_topic if ntfy_topic else omit }}"
-                                  data:
-                                    attach: "{{attachment|replace(base_url, ntfy_base_url)}}"
+                                  attach: "{{attachment|replace(base_url, ntfy_base_url)}}"
                           - conditions: "{{ not notify_group_target }}"
                             sequence:
                               - device_id: !input notify_device
@@ -2010,21 +2003,21 @@ actions:
                                             - "{{ event['type'] == 'end' }}"
                                             - "{{ video | length > 0 }}"
                                           sequence:
-                                            - action: "notify.{{ ntfy_notifier }}"
+                                            - action: ntfy.publish
+                                              target:
+                                                entity_id: "notify.{{ ntfy_topic }}"
                                               data:
                                                 title: "{{title}}"
                                                 message: "{{message}}"
-                                                target: "{{ ntfy_topic if ntfy_topic else omit }}"
-                                                data:
-                                                  attach: "{{video|replace(base_url, ntfy_base_url)}}"
+                                                attach: "{{video|replace(base_url, ntfy_base_url)}}"
                                       default:
-                                        - action: "notify.{{ ntfy_notifier }}"
+                                        - action: ntfy.publish
+                                          target:
+                                            entity_id: "notify.{{ ntfy_topic }}"
                                           data:
                                             title: "{{title}}"
                                             message: "{{message}}"
-                                            target: "{{ ntfy_topic if ntfy_topic else omit }}"
-                                            data:
-                                              attach: "{{attachment|replace(base_url, ntfy_base_url)}}"
+                                            attach: "{{attachment|replace(base_url, ntfy_base_url)}}"
                                 - conditions: "{{ not notify_group_target }}"
                                   sequence:
                                     - device_id: !input notify_device
