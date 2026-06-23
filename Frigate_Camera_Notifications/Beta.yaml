@@ -105,6 +105,34 @@ blueprint:
             If set, this will override individual devices and groups above. Note: TV (far below) must be set to false.
             Base URL must start with https since telegram URL buttons only work with https.
           default: ""
+    signal:
+      name: |
+        # Signal Configuration
+      description: Signal Messenger specific options. Requires the Signal Messenger integration.
+      icon: mdi:message-lock-outline
+      collapsed: true
+      input:
+        signal_base_url:
+          name: Signal Base URL (Optional)
+          description: |
+            The internal URL for your Home Assistant instance.
+            Used for Signal media downloads. Useful if your base URL is an external/proxy address
+            unreachable from the Signal addon. If unset, uses the top-level Base URL.
+            Must include the scheme, e.g. http://192.168.1.25:8123
+          default: ""
+        notify_signal_notifier:
+          name: Signal Notifier Name (Optional)
+          description: |
+            The name of your Signal notify service (e.g. 'signal_bot' calls notify.signal_bot).
+            If set, this will override individual devices and groups above.
+            Find your notifier name in Developer Tools → Services → filter by "notify".
+          default: ""
+        notify_signal_target:
+          name: Signal Target (Optional)
+          description: |
+            Phone number or Signal group ID to send notifications to.
+            If omitted, uses the default recipient(s) configured in the Signal integration.
+          default: ""
     notification_customisations:
       name: |
         # Notification Customisations
@@ -1002,6 +1030,11 @@ variables:
   notify_group_target: "{{ notify_group | lower | regex_replace('^notify\\.', '') | replace(' ','_') }}"
   telegram_chat_id: !input notify_telegram_chat_id
   telegram: "{{true if (telegram_chat_id | length > 0) else false}}"
+  input_signal_base_url: !input signal_base_url
+  signal_base_url: "{{ input_signal_base_url.rstrip('/') if input_signal_base_url else base_url }}"
+  signal_notifier: !input notify_signal_notifier
+  signal_target: !input notify_signal_target
+  signal: "{{true if (signal_notifier | length > 0) else false}}"
   zone_only: !input zone_filter
   input_zones: !input zones
   zones: "{{ input_zones | list | lower }}"
@@ -1162,6 +1195,16 @@ actions:
                           chat_id: "{{telegram_chat_id}}"
                           caption: "{{message}}"
                           url: "{{attachment|replace( base_url, telegram_base_url )}}"
+                  - conditions: "{{ signal }}"
+                    sequence:
+                      - action: "notify.{{ signal_notifier }}"
+                        data:
+                          message: "{{message}}"
+                          target: "{{ [signal_target] if signal_target else omit }}"
+                          data:
+                            urls:
+                              - "{{attachment|replace(base_url, signal_base_url)}}"
+                            verify_ssl: false
                   - conditions: "{{ not notify_group_target }}"
                     sequence:
                       - device_id: !input notify_device
@@ -1465,6 +1508,8 @@ actions:
                               TV Interrupt: {{tv_interrupt}}, 
                             Telegram: {{telegram}},
                             Telegram_chat_id: {{telegram_chat_id}},
+                            Signal: {{signal}},
+                            Signal_notifier: {{signal_notifier}},
                           Filters: 
                             Severity:
                               Required Severity: {{input_severity}},
@@ -1536,6 +1581,16 @@ actions:
                                         ["{{button_2}}", "{{url_2}}"],
                                       ]
                                     - [["{{button_3}}", "{{url_3}}"]]
+                          - conditions: "{{ signal }}"
+                            sequence:
+                              - action: "notify.{{ signal_notifier }}"
+                                data:
+                                  message: "{{message}}"
+                                  target: "{{ [signal_target] if signal_target else omit }}"
+                                  data:
+                                    urls:
+                                      - "{{attachment|replace(base_url, signal_base_url)}}"
+                                    verify_ssl: false
                           - conditions: "{{ not notify_group_target }}"
                             sequence:
                               - device_id: !input notify_device
@@ -2013,6 +2068,30 @@ actions:
                                                   ["{{button_2}}", "{{url_2}}"],
                                                 ]
                                               - [["{{button_3}}", "{{url_3}}"]]
+                                - conditions: "{{ signal }}"
+                                  sequence:
+                                    - choose:
+                                        - conditions:
+                                            - "{{ event['type'] == 'end' }}"
+                                            - "{{ video | length > 0 }}"
+                                          sequence:
+                                            - action: "notify.{{ signal_notifier }}"
+                                              data:
+                                                message: "{{message}}"
+                                                target: "{{ [signal_target] if signal_target else omit }}"
+                                                data:
+                                                  urls:
+                                                    - "{{video|replace(base_url, signal_base_url)}}"
+                                                  verify_ssl: false
+                                      default:
+                                        - action: "notify.{{ signal_notifier }}"
+                                          data:
+                                            message: "{{message}}"
+                                            target: "{{ [signal_target] if signal_target else omit }}"
+                                            data:
+                                              urls:
+                                                - "{{attachment|replace(base_url, signal_base_url)}}"
+                                              verify_ssl: false
                                 - conditions: "{{ not notify_group_target }}"
                                   sequence:
                                     - device_id: !input notify_device
