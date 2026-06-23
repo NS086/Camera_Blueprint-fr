@@ -1196,7 +1196,7 @@ actions:
                         data:
                           title: "{{title}}"
                           message: "{{message}}"
-                          attach: "{{attachment|replace(base_url, ntfy_base_url)}}"
+                          attach: "{{ attachment|replace(base_url, ntfy_base_url) if base_url else attachment }}"
                   - conditions: "{{ not notify_group_target }}"
                     sequence:
                       - device_id: !input notify_device
@@ -1581,7 +1581,7 @@ actions:
                                 data:
                                   title: "{{title}}"
                                   message: "{{message}}"
-                                  attach: "{{attachment|replace(base_url, ntfy_base_url)}}"
+                                  attach: "{{ attachment|replace(base_url, ntfy_base_url) if base_url else attachment }}"
                           - conditions: "{{ not notify_group_target }}"
                             sequence:
                               - device_id: !input notify_device
@@ -2072,7 +2072,7 @@ actions:
                                               data:
                                                 title: "{{title}}"
                                                 message: "{{message}}"
-                                                attach: "{{video|replace(base_url, ntfy_base_url)}}"
+                                                attach: "{{ video|replace(base_url, ntfy_base_url) if base_url else video }}"
                                       default:
                                         - action: ntfy.publish
                                           target:
@@ -2080,7 +2080,7 @@ actions:
                                           data:
                                             title: "{{title}}"
                                             message: "{{message}}"
-                                            attach: "{{attachment|replace(base_url, ntfy_base_url)}}"
+                                            attach: "{{ attachment|replace(base_url, ntfy_base_url) if base_url else attachment }}"
                                 - conditions: "{{ not notify_group_target }}"
                                   sequence:
                                     - device_id: !input notify_device
